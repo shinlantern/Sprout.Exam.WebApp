@@ -101,10 +101,13 @@ export class EmployeeCalculate extends Component {
     const requestOptions = {
         method: 'POST',
         headers: !token ? {} : { 'Authorization': `Bearer ${token}`,'Content-Type': 'application/json' },
-        body: JSON.stringify({id: this.state.id,absentDays: this.state.absentDays,workedDays: this.state.workedDays})
+        body: JSON.stringify({id: this.state.id, absentDays: this.state.absentDays, workedDays: this.state.workedDays})
     };
     const response = await fetch('api/employees/' + this.state.id + '/calculate',requestOptions);
-    const data = await response.json();
+      const data = parseFloat(await response.json()).toLocaleString(undefined, {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+      });
     this.setState({ loadingCalculate: false,netIncome: data });
   }
 

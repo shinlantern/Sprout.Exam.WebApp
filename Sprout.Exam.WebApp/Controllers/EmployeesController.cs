@@ -7,6 +7,8 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Sprout.Exam.Business.DataTransferObjects;
 using Sprout.Exam.Common.Enums;
+using Sprout.Exam.WebApp.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace Sprout.Exam.WebApp.Controllers
 {
@@ -15,7 +17,7 @@ namespace Sprout.Exam.WebApp.Controllers
     [ApiController]
     public class EmployeesController : ControllerBase
     {
-
+        private SproutExamDbContext db = new SproutExamDbContext();
         /// <summary>
         /// Refactor this method to go through proper layers and fetch from the DB.
         /// </summary>
@@ -23,8 +25,15 @@ namespace Sprout.Exam.WebApp.Controllers
         [HttpGet]
         public async Task<IActionResult> Get()
         {
-            var result = await Task.FromResult(StaticEmployees.ResultList);
-            return Ok(result);
+            var dbResult = await Task.FromResult(db.Employees.Where(a => !a.IsDeleted).ToList());
+            IEnumerable<EmployeeDto> employees_data = dbResult.Select(a => new EmployeeDto {
+                Birthdate = a.Birthdate.ToString("yyyy-MM-dd"),
+                FullName = a.FullName,
+                Id = a.Id,
+                Tin = a.Tin,
+                TypeId = a.EmployeeTypeId
+            });
+            return Ok(employees_data);
         }
 
         /// <summary>
@@ -34,8 +43,15 @@ namespace Sprout.Exam.WebApp.Controllers
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {
-            var result = await Task.FromResult(StaticEmployees.ResultList.FirstOrDefault(m => m.Id == id));
-            return Ok(result);
+            var dbResult = await Task.FromResult(db.Employees.FirstOrDefault(a => a.Id == id));
+            EmployeeDto employee_data = new EmployeeDto() { 
+                Birthdate = dbResult.Birthdate.ToString("yyyy-MM-dd"),
+                FullName = dbResult.FullName,
+                Id = dbResult.Id,
+                Tin = dbResult.Tin,
+                TypeId = dbResult.EmployeeTypeId
+            };
+            return Ok(employee_data);
         }
 
         /// <summary>
@@ -45,12 +61,16 @@ namespace Sprout.Exam.WebApp.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> Put(EditEmployeeDto input)
         {
-            var item = await Task.FromResult(StaticEmployees.ResultList.FirstOrDefault(m => m.Id == input.Id));
+            var item = await Task.FromResult(db.Employees.FirstOrDefault(m => m.Id == input.Id));
             if (item == null) return NotFound();
             item.FullName = input.FullName;
             item.Tin = input.Tin;
-            item.Birthdate = input.Birthdate.ToString("yyyy-MM-dd");
-            item.TypeId = input.TypeId;
+            item.Birthdate = Convert.ToDateTime(input.Birthdate.ToString("yyyy-MM-dd"));
+            item.EmployeeTypeId = input.TypeId;
+
+            await Task.FromResult(db.Entry(item).State = EntityState.Modified);
+            await db.SaveChangesAsync();
+
             return Ok(item);
         }
 
@@ -61,19 +81,19 @@ namespace Sprout.Exam.WebApp.Controllers
         [HttpPost]
         public async Task<IActionResult> Post(CreateEmployeeDto input)
         {
-
-           var id = await Task.FromResult(StaticEmployees.ResultList.Max(m => m.Id) + 1);
-
-            StaticEmployees.ResultList.Add(new EmployeeDto
+            Employee new_employee = new Employee()
             {
-                Birthdate = input.Birthdate.ToString("yyyy-MM-dd"),
+                Birthdate = input.Birthdate,
+                EmployeeTypeId = input.TypeId,
                 FullName = input.FullName,
-                Id = id,
-                Tin = input.Tin,
-                TypeId = input.TypeId
-            });
+                IsDeleted = false,
+                Tin = input.Tin
+            };
 
-            return Created($"/api/employees/{id}", id);
+            await Task.FromResult(db.Employees.Add(new_employee));
+            await db.SaveChangesAsync();
+
+            return Created($"/api/employees/{new_employee.Id}", new_employee.Id);
         }
 
 
@@ -84,9 +104,12 @@ namespace Sprout.Exam.WebApp.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
-            var result = await Task.FromResult(StaticEmployees.ResultList.FirstOrDefault(m => m.Id == id));
-            if (result == null) return NotFound();
-            StaticEmployees.ResultList.RemoveAll(m => m.Id == id);
+            var dbResult = await Task.FromResult(db.Employees.FirstOrDefault(a => a.Id == id));
+            if (dbResult == null) return NotFound();
+
+            dbResult.IsDeleted = true;
+            await Task.FromResult(db.Entry(dbResult).State = EntityState.Modified);
+            await db.SaveChangesAsync();
             return Ok(id);
         }
 
@@ -99,21 +122,28 @@ namespace Sprout.Exam.WebApp.Controllers
         /// <param name="absentDays"></param>
         /// <param name="workedDays"></param>
         /// <returns></returns>
-        [HttpPost("{id}/calculate")]
-        public async Task<IActionResult> Calculate(int id,decimal absentDays,decimal workedDays)
+        /// 
+        public class CalculateBody
         {
-            var result = await Task.FromResult(StaticEmployees.ResultList.FirstOrDefault(m => m.Id == id));
+            public int id { get; set; }
+            public decimal absentDays { get; set; }
+            public decimal workedDays { get; set; }
+        }
 
-            if (result == null) return NotFound();
-            var type = (EmployeeType) result.TypeId;
+        [HttpPost("{id}/calculate")]
+        public async Task<IActionResult> Calculate(int id, [FromBody] CalculateBody data)
+        {
+            var dbResult = await Task.FromResult(db.Employees.FirstOrDefault(a => a.Id == id));
+            if (dbResult == null) return NotFound();
+            var type = (EmployeeType)dbResult.EmployeeTypeId;
             return type switch
             {
                 EmployeeType.Regular =>
                     //create computation for regular.
-                    Ok(25000),
+                    Ok(Math.Round((20000 - ((20000 / 22) * (double)data.absentDays) - (20000 * 0.12)), 2)),
                 EmployeeType.Contractual =>
                     //create computation for contractual.
-                    Ok(20000),
+                    Ok(Math.Round(500 * data.workedDays, 2)),
                 _ => NotFound("Employee Type not found")
             };
 
