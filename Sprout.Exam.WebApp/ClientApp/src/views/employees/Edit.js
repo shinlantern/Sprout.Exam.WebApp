@@ -18,9 +18,14 @@ export class EmployeeEdit extends Component {
 
   handleSubmit(e){
       e.preventDefault();
-      if (window.confirm("Are you sure you want to save?")) {
-        this.saveEmployee();
-      } 
+      if (this.state.fullName == '' || this.state.birthdate == '' || this.state.tin == '') {
+          alert("All fields are required");
+      }
+      else {
+          if (window.confirm("Are you sure you want to save?")) {
+              this.saveEmployee();
+          }
+      }
   }
 
   render() {

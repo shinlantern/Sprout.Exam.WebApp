@@ -18,6 +18,8 @@ export class EmployeeCalculate extends Component {
 
   handleSubmit(e){
       e.preventDefault();
+      this.state.absentDays = isNaN(this.state.absentDays) ? 0 : this.state.absentDays;
+      this.state.workedDays = isNaN(this.state.workedDays) ? 0 : this.state.workedDays;
       this.calculateSalary();
   }
 

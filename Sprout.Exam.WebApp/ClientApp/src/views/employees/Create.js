@@ -9,8 +9,7 @@ export class EmployeeCreate extends Component {
     this.state = { fullName: '',birthdate: '',tin: '',typeId: 1, loading: false,loadingSave:false };
   }
 
-    componentDidMount() {
-        this.populateEmployeeTypeData();
+  componentDidMount() {
   }
 
   handleChange(event) {
@@ -20,8 +19,13 @@ export class EmployeeCreate extends Component {
   handleSubmit(e){
       e.preventDefault();
 
-      if (window.confirm("Are you sure you want to save?")) {
-          this.saveEmployee();
+      if (this.state.fullName == '' || this.state.birthdate == '' || this.state.tin == '') {
+          alert("All fields are required");
+      }
+      else {
+          if (window.confirm("Are you sure you want to save?")) {
+              this.saveEmployee();
+          }
       }
   }
 
@@ -89,14 +93,4 @@ export class EmployeeCreate extends Component {
         window.location.reload();
     }
   }
-
-   async populateEmployeeTypeData() {
-       const token = await authService.getAccessToken();
-       const response = await fetch('api/employeetype', {
-           headers: !token ? {} : { 'Authorization': `Bearer ${token}` }
-       });
-       const data = await response.json();
-       console.log(data);
-   }
-
 }
