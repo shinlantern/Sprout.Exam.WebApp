@@ -28,10 +28,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="Models\EmployeeType.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Folder Include="ClientApp\src\views\employees\" />
   </ItemGroup>
 

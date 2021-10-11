@@ -84,6 +84,7 @@ export class EmployeeEdit extends Component {
     }
     else{
         alert("There was an error occured.");
+        window.location.reload();
     }
   }
 

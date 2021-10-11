@@ -6,9 +6,10 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Sprout.Exam.Business.DataTransferObjects;
-using Sprout.Exam.Common.Enums;
+//using Sprout.Exam.Common.Enums;
 using Sprout.Exam.WebApp.Models;
 using Microsoft.EntityFrameworkCore;
+using Sprout.Exam.Common.ViewModels;
 
 namespace Sprout.Exam.WebApp.Controllers
 {
@@ -43,15 +44,23 @@ namespace Sprout.Exam.WebApp.Controllers
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {
-            var dbResult = await Task.FromResult(db.Employees.FirstOrDefault(a => a.Id == id));
-            EmployeeDto employee_data = new EmployeeDto() { 
-                Birthdate = dbResult.Birthdate.ToString("yyyy-MM-dd"),
-                FullName = dbResult.FullName,
-                Id = dbResult.Id,
-                Tin = dbResult.Tin,
-                TypeId = dbResult.EmployeeTypeId
-            };
-            return Ok(employee_data);
+            try
+            {
+                var dbResult = await Task.FromResult(db.Employees.FirstOrDefault(a => a.Id == id));
+                EmployeeDto employee_data = new EmployeeDto()
+                {
+                    Birthdate = dbResult.Birthdate.ToString("yyyy-MM-dd"),
+                    FullName = dbResult.FullName,
+                    Id = dbResult.Id,
+                    Tin = dbResult.Tin,
+                    TypeId = dbResult.EmployeeTypeId
+                };
+                return Ok(employee_data);
+            }
+            catch (Exception e)
+            {
+                return NotFound(id);
+            }
         }
 
         /// <summary>
@@ -61,17 +70,24 @@ namespace Sprout.Exam.WebApp.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> Put(EditEmployeeDto input)
         {
-            var item = await Task.FromResult(db.Employees.FirstOrDefault(m => m.Id == input.Id));
-            if (item == null) return NotFound();
-            item.FullName = input.FullName;
-            item.Tin = input.Tin;
-            item.Birthdate = Convert.ToDateTime(input.Birthdate.ToString("yyyy-MM-dd"));
-            item.EmployeeTypeId = input.TypeId;
+            try
+            {
+                var item = await Task.FromResult(db.Employees.FirstOrDefault(m => m.Id == input.Id));
+                if (item == null) return NotFound();
+                item.FullName = input.FullName;
+                item.Tin = input.Tin;
+                item.Birthdate = Convert.ToDateTime(input.Birthdate.ToString("yyyy-MM-dd"));
+                item.EmployeeTypeId = input.TypeId;
 
-            await Task.FromResult(db.Entry(item).State = EntityState.Modified);
-            await db.SaveChangesAsync();
+                await Task.FromResult(db.Entry(item).State = EntityState.Modified);
+                await db.SaveChangesAsync();
 
-            return Ok(item);
+                return Ok(item);
+            }
+            catch (Exception e)
+            {
+                return NotFound(input.Id);
+            }
         }
 
         /// <summary>
@@ -104,16 +120,21 @@ namespace Sprout.Exam.WebApp.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
-            var dbResult = await Task.FromResult(db.Employees.FirstOrDefault(a => a.Id == id));
-            if (dbResult == null) return NotFound();
+            try
+            {
+                var dbResult = await Task.FromResult(db.Employees.FirstOrDefault(a => a.Id == id));
+                if (dbResult == null) return NotFound();
 
-            dbResult.IsDeleted = true;
-            await Task.FromResult(db.Entry(dbResult).State = EntityState.Modified);
-            await db.SaveChangesAsync();
-            return Ok(id);
+                dbResult.IsDeleted = true;
+                await Task.FromResult(db.Entry(dbResult).State = EntityState.Modified);
+                await db.SaveChangesAsync();
+                return Ok(id);
+            }
+            catch (Exception e)
+            {
+                return NotFound(id);
+            }
         }
-
-
 
         /// <summary>
         /// Refactor this method to go through proper layers and use Factory pattern
@@ -123,25 +144,18 @@ namespace Sprout.Exam.WebApp.Controllers
         /// <param name="workedDays"></param>
         /// <returns></returns>
         /// 
-        public class CalculateBody
-        {
-            public int id { get; set; }
-            public decimal absentDays { get; set; }
-            public decimal workedDays { get; set; }
-        }
-
         [HttpPost("{id}/calculate")]
-        public async Task<IActionResult> Calculate(int id, [FromBody] CalculateBody data)
+        public async Task<IActionResult> Calculate(int id, [FromBody] SalaryCalculateViewModel data)
         {
             var dbResult = await Task.FromResult(db.Employees.FirstOrDefault(a => a.Id == id));
             if (dbResult == null) return NotFound();
-            var type = (EmployeeType)dbResult.EmployeeTypeId;
+            var type = (Sprout.Exam.Common.Enums.EmployeeType)dbResult.EmployeeTypeId;
             return type switch
             {
-                EmployeeType.Regular =>
+                Sprout.Exam.Common.Enums.EmployeeType.Regular =>
                     //create computation for regular.
                     Ok(Math.Round((20000 - ((20000 / 22) * (double)data.absentDays) - (20000 * 0.12)), 2)),
-                EmployeeType.Contractual =>
+                Sprout.Exam.Common.Enums.EmployeeType.Contractual =>
                     //create computation for contractual.
                     Ok(Math.Round(500 * data.workedDays, 2)),
                 _ => NotFound("Employee Type not found")

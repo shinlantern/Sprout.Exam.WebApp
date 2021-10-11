@@ -26,7 +26,7 @@ namespace Sprout.Exam.WebApp.Models
         public virtual DbSet<AspNetUserToken> AspNetUserTokens { get; set; }
         public virtual DbSet<DeviceCode> DeviceCodes { get; set; }
         public virtual DbSet<Employee> Employees { get; set; }
-        //public virtual DbSet<EmployeeType> EmployeeTypes { get; set; }
+        public virtual DbSet<EmployeeType> EmployeeType { get; set; }
         public virtual DbSet<PersistedGrant> PersistedGrants { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
